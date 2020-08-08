@@ -1,0 +1,62 @@
+<?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+/*
+*Librería CodeIgniter para hacer consultas a graphql desde php
+*soporta el uso de variables en el query
+*TODO: validaciones de variables vacias y datos vacios
+*Por: rigohvz14@gmail.com
+*/
+class Functions{
+    public function __construct()
+    {
+      date_default_timezone_set("America/Mexico_City");
+      $this->CI =& get_instance();
+
+    }
+    
+    function seccion_count($url)
+    {
+    //el heredoc tiene que ir de esta manera, ya que con tabs o espacios al principio marca error
+$query = <<<'QG'
+query posts($slug: String){
+    posts(where:{Seccion:{Slug:$slug}}){
+      id
+    }
+}
+QG;
+      $variables = json_encode(['slug'=>$url]);
+
+      $json = json_encode(['query' => $query, 'variables' => $variables]);
+      $data = $this->get_data($json);
+      return $data;
+    }
+    
+    function get_data($query='')
+    {
+      //"{\"query\":\"{posts(where:{id:1}){Titulo Slug id Imagen{hash url}}}\"}"); //<-Codigo original en vez de variable $query
+      $ch = curl_init();
+
+      curl_setopt($ch, CURLOPT_URL, grapql_url.'/graphql');
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+      curl_setopt($ch, CURLOPT_POST, 1);
+      curl_setopt($ch, CURLOPT_POSTFIELDS, $query);
+      curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate');
+
+      $headers = array();
+      $headers[] = 'Accept-Encoding: gzip, deflate, br';
+      $headers[] = 'Content-Type: application/json';
+      $headers[] = 'Accept: application/json';
+      $headers[] = 'Connection: keep-alive';
+      $headers[] = 'Dnt: 1';
+      $headers[] = 'Origin: '.grapql_url;
+      curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+      $result = curl_exec($ch);
+
+      if (curl_errno($ch)) {
+          return '';
+      }
+      curl_close($ch);
+      return json_decode($result);
+    }
+  
+  }
